@@ -27,7 +27,8 @@ type FPWorkerSet struct {
 	Errors     chan error
 	mutex      *sync.Mutex
 	MaxRoutine int
-	MaxId      int
+	StartId    int
+	EndId      int
 }
 
 type FPWorkFlow struct {
@@ -41,7 +42,7 @@ func (set *FPWorkerSet) Start() {
 	set.Errors = make(chan error, 100)
 	set.Done = make(chan bool)
 	set.mutex = &sync.Mutex{}
-
+	set.number = set.StartId
 	for i := 0; i < set.MaxRoutine; i++ {
 		wf := &FPWorkFlow{}
 		go func() {
@@ -72,7 +73,7 @@ func (set *FPWorkerSet) Next() (number uint64) {
 	atomic.AddUint64(&set.number, 1)
 	number = atomic.LoadUint64(&set.number)
 
-	if number > uint64(set.MaxId) {
+	if number > uint64(set.EndId) {
 		number = 0
 		set.Done <- true
 	}
@@ -136,7 +137,7 @@ func (wf *FPWorkFlow) Start(id xiami.Id) (err error) {
 }
 
 func (wf *FPWorkFlow) Clean() (err error) {
-	if wf.Filename == "" {
+	if wf.Filename != "" {
 		err = os.Remove(wf.Filename)
 	}
 
