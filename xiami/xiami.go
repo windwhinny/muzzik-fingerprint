@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/windwhinny/muzzik-fingerprint/http-client"
+	"html"
 	"io/ioutil"
 	"math"
 	"net/http"
@@ -46,27 +48,20 @@ type XiamiTrack struct {
 
 func GetMusic(id Id) (music *Music, err error) {
 	var res *http.Response
-	url := fmt.Sprintf(PathTmp, id)
-	res, err = http.Get(url)
+
+	link := fmt.Sprintf(PathTmp, id)
+	res, err = httpClient.Get(link)
+	defer res.Body.Close()
 	if err != nil {
 		return
 	}
-	defer res.Body.Close()
-
-	if res.StatusCode >= 400 {
-		err = errors.New(fmt.Sprintf("response return %d", res.StatusCode))
+	var buf []byte
+	xiamiRes := &XiamiResponse{}
+	buf, err = ioutil.ReadAll(res.Body)
+	if err != nil {
 		return
 	}
-
-	return handleResponse(res)
-}
-
-func handleResponse(res *http.Response) (music *Music, err error) {
-	var buf []byte
-	buf, err = ioutil.ReadAll(res.Body)
-	xiamiRes := &XiamiResponse{}
 	err = json.Unmarshal(buf, xiamiRes)
-
 	if err != nil {
 		return
 	}
@@ -146,9 +141,9 @@ func (track *XiamiTrack) DecodeUrl() (err error) {
 
 func (track *XiamiTrack) ConvertMusic() (music *Music, err error) {
 	music = &Music{}
-	music.Title = track.Title
-	music.Album = track.Album
-	music.Artist = track.Artist
+	music.Title = html.UnescapeString(track.Title)
+	music.Album = html.UnescapeString(track.Album)
+	music.Artist = html.UnescapeString(track.Artist)
 	music.Cover = track.Cover
 	music.Url = track.Url
 

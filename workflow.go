@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/windwhinny/muzzik-fingerprint/http-client"
 	"github.com/windwhinny/muzzik-fingerprint/xiami"
 	"io"
 	"io/ioutil"
@@ -15,7 +16,19 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 )
+
+type FPWorkerSet struct {
+	workers    []*FPWorkFlow
+	number     uint64
+	Done       chan bool
+	Errors     chan error
+	mutex      *sync.Mutex
+	MaxRoutine int
+	MaxId      int
+}
 
 type FPWorkFlow struct {
 	Music    *xiami.Music
@@ -23,6 +36,69 @@ type FPWorkFlow struct {
 }
 
 type JSON map[string]interface{}
+
+func (set *FPWorkerSet) Start() {
+	set.Errors = make(chan error, 100)
+	set.Done = make(chan bool)
+	set.mutex = &sync.Mutex{}
+
+	for i := 0; i < set.MaxRoutine; i++ {
+		wf := &FPWorkFlow{}
+		go func() {
+			for {
+				number := set.Next()
+				if number == 0 {
+					break
+				}
+
+				err := wf.Start(xiami.Id(number))
+
+				if err != nil {
+					set.HandleError(err)
+				}
+			}
+		}()
+
+		set.workers = append(set.workers, wf)
+	}
+
+	set.CatchError()
+	set.Wait()
+}
+
+func (set *FPWorkerSet) Next() (number uint64) {
+	number = atomic.LoadUint64(&set.number)
+	fmt.Printf("loaded %d\n", set.number)
+	atomic.AddUint64(&set.number, 1)
+	number = atomic.LoadUint64(&set.number)
+
+	if number > uint64(set.MaxId) {
+		number = 0
+		set.Done <- true
+	}
+	return
+}
+
+func (set *FPWorkerSet) Wait() {
+	<-set.Done
+}
+
+func (set *FPWorkerSet) HandleError(err error) {
+	if err.Error() != "empty response" {
+		set.Errors <- err
+	}
+}
+
+func (set *FPWorkerSet) CatchError() {
+	go func() {
+		for {
+			err := <-set.Errors
+			if err != nil {
+				fmt.Println(err.Error())
+			}
+		}
+	}()
+}
 
 func updateSolr(data JSON) (err error) {
 	var buf bytes.Buffer
@@ -32,11 +108,38 @@ func updateSolr(data JSON) (err error) {
 	}
 
 	var res *http.Response
-	res, err = http.Post("http://localhost:8080/solr/fp/update", "Content-type:application/json", &buf)
+	res, err = http.Post("http://localhost:8080/solr/fp/update?commit=true", "Content-type:application/json", &buf)
 	if err != nil {
 		return
 	}
 	res.Body.Close()
+	return
+}
+
+func (wf *FPWorkFlow) Start(id xiami.Id) (err error) {
+	err = wf.SetMusic(id)
+	if err != nil {
+		return
+	}
+
+	err = wf.Save()
+	if err != nil {
+		return
+	}
+
+	err = wf.Clean()
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func (wf *FPWorkFlow) Clean() (err error) {
+	if wf.Filename == "" {
+		err = os.Remove(wf.Filename)
+	}
+
 	return
 }
 
@@ -95,7 +198,7 @@ func download(id xiami.Id) (music *xiami.Music, name string, err error) {
 	if err != nil {
 		return
 	}
-	res, err = http.Get(music.Url)
+	res, err = httpClient.Get(music.Url)
 
 	if err != nil {
 		return

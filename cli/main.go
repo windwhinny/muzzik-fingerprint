@@ -1,11 +1,12 @@
 package main
 
 import (
-	"../xiami"
-	"fmt"
+	"github.com/windwhinny/muzzik-fingerprint"
 )
 
 func main() {
-	music, _ := xiami.GetMusic(100)
-	fmt.Println(music)
+	set := &muzzikfp.FPWorkerSet{}
+	set.MaxRoutine = 20
+	set.MaxId = 1000000
+	set.Start()
 }

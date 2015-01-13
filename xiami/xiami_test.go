@@ -1,6 +1,7 @@
 package xiami
 
 import (
+	"github.com/cheggaaa/pb"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -11,14 +12,28 @@ var _ = Describe("Xiami", func() {
 		var music *Music
 		var err error
 		BeforeEach(func() {
-			music, err = GetMusic(1)
+			music, err = GetMusic(100)
+			Expect(err).To(BeNil())
 		})
 
 		It("should return music", func() {
-			Expect(err).To(BeNil())
 			Expect(music).ToNot(BeNil())
 			Expect(music.Artist).ToNot(Equal(""))
 			Expect(music.Title).ToNot(Equal(""))
+		})
+
+		It("should not be blocked", func() {
+			progress := pb.StartNew(100)
+			for i := 1; i <= 100; i++ {
+				music, err := GetMusic(Id(i))
+				if err != nil && err.Error() == "empty response" {
+				} else {
+					Expect(err).To(BeNil())
+					Expect(music.Artist).ToNot(Equal(""))
+				}
+				progress.Increment()
+			}
+			progress.FinishPrint("Done")
 		})
 	})
 
@@ -41,4 +56,5 @@ var _ = Describe("Xiami", func() {
 			})
 		})
 	})
+
 })
