@@ -35,6 +35,8 @@ type FPWorkFlow struct {
 	Filename string
 }
 
+var SolrHost string
+
 type JSON map[string]interface{}
 
 func (set *FPWorkerSet) Start() {
@@ -108,7 +110,13 @@ func updateSolr(data JSON) (err error) {
 	}
 
 	var res *http.Response
-	res, err = http.Post("http://localhost:8080/solr/fp/update?commit=true", "Content-type:application/json", &buf)
+	var link string
+	if SolrHost == "" {
+		link = `http://localhost:8080/solr/fp/update?commit=true`
+	} else {
+		link = fmt.Sprintf("http://%s/solr/fp/update?commit=true", SolrHost)
+	}
+	res, err = http.Post(link, "Content-type:application/json", &buf)
 	if err != nil {
 		return
 	}

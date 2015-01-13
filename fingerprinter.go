@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/windwhinny/muzzik-fingerprint/xiami"
 	"io"
 	"net/http"
@@ -27,7 +28,13 @@ func querySolr(fp string) (music *xiami.Music, err error) {
 		"rows": {"1"},
 		"wt":   {"json"},
 	}
-	res, err := http.PostForm("http://localhost:8080/solr/fp/select", query)
+	var link string
+	if SolrHost == "" {
+		link = `http://localhost:8080/solr/fp/select`
+	} else {
+		link = fmt.Sprintf("http://%s/solr/fp/select", SolrHost)
+	}
+	res, err := http.PostForm(link, query)
 	if err != nil {
 		return
 	}
