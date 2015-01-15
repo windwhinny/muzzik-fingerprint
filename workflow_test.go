@@ -56,6 +56,27 @@ var _ = Describe("CodeGen", func() {
 		})
 	})
 
+	Describe("makeStorageFile", func() {
+		var file *os.File
+		var err error
+		BeforeEach(func() {
+			file, err = makeStorageFile(12345678)
+			Expect(err).To(BeNil())
+		})
+
+		AfterEach(func() {
+			err = os.RemoveAll(file.Name())
+			Expect(err).To(BeNil())
+		})
+
+		It("should return a file within directory", func() {
+			stat, err := file.Stat()
+			Expect(err).To(BeNil())
+			Expect(stat.IsDir()).To(Equal(false))
+			Expect(file.Name()).To(Equal("/tmp/music/123/456/78.m"))
+		})
+	})
+
 	Describe("Save", func() {
 		var wf *FPWorkFlow
 		var err error
@@ -67,7 +88,7 @@ var _ = Describe("CodeGen", func() {
 
 		It("should successed", func() {
 			wf = &FPWorkFlow{}
-			err = wf.SetMusic(200)
+			err = wf.GetMusic(200)
 			Expect(err).To(BeNil())
 			err = wf.Save()
 			Expect(err).To(BeNil())

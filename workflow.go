@@ -18,6 +18,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 type FPWorkerSet struct {
@@ -29,14 +30,17 @@ type FPWorkerSet struct {
 	MaxRoutine int
 	StartId    int
 	EndId      int
+	SaveToSolr bool
 }
 
 type FPWorkFlow struct {
-	Music    *xiami.Music
-	Filename string
+	Music      *xiami.Music
+	Filename   string
+	SaveToSolr bool
 }
 
 var SolrHost string
+var MusicStorageDir string
 
 type JSON map[string]interface{}
 
@@ -44,9 +48,10 @@ func (set *FPWorkerSet) Start() {
 	set.Errors = make(chan error, 100)
 	set.Done = make(chan bool)
 	set.mutex = &sync.Mutex{}
-	set.number = set.StartId
+	set.number = uint64(set.StartId)
 	for i := 0; i < set.MaxRoutine; i++ {
 		wf := &FPWorkFlow{}
+		wf.SaveToSolr = set.SaveToSolr
 		go func() {
 			for {
 				number := set.Next()
@@ -71,7 +76,7 @@ func (set *FPWorkerSet) Start() {
 
 func (set *FPWorkerSet) Next() (number uint64) {
 	number = atomic.LoadUint64(&set.number)
-	fmt.Printf("loaded %d\n", set.number)
+	fmt.Printf("%s, loaded %d\n", time.Now().Format(time.RFC3339), set.number)
 	atomic.AddUint64(&set.number, 1)
 	number = atomic.LoadUint64(&set.number)
 
@@ -112,33 +117,40 @@ func updateSolr(data JSON) (err error) {
 
 	var res *http.Response
 	var link string
+	var linkTmp = "http://%s/solr/fp/update?commitWithin=600000"
 	if SolrHost == "" {
-		link = `http://localhost:8080/solr/fp/update?commit=true`
+		link = fmt.Sprintf(linkTmp, "localhost:8080")
 	} else {
-		link = fmt.Sprintf("http://%s/solr/fp/update?commit=true", SolrHost)
+		link = fmt.Sprintf(linkTmp, SolrHost)
 	}
 	res, err = http.Post(link, "Content-type:application/json", &buf)
 	if err != nil {
 		return
 	}
-	res.Body.Close()
+	defer res.Body.Close()
+	if res.StatusCode > 400 {
+		var buf []byte
+		buf, err = ioutil.ReadAll(res.Body)
+		if err != nil {
+			return
+		}
+		err = errors.New(fmt.Sprintf("solr return %d\n%s\n", res.StatusCode, string(buf)))
+	}
+
 	return
 }
 
 func (wf *FPWorkFlow) Start(id xiami.Id) (err error) {
-	err = wf.SetMusic(id)
+	err = wf.GetMusic(id)
 	if err != nil {
 		return
 	}
 
-	err = wf.Save()
-	if err != nil {
-		return
-	}
-
-	err = wf.Clean()
-	if err != nil {
-		return
+	if wf.SaveToSolr {
+		err = wf.Save()
+		if err != nil {
+			return
+		}
 	}
 
 	return
@@ -181,7 +193,7 @@ func (wf *FPWorkFlow) Remove() (err error) {
 	return
 }
 
-func (wf *FPWorkFlow) SetMusic(id xiami.Id) (err error) {
+func (wf *FPWorkFlow) GetMusic(id xiami.Id) (err error) {
 	var name, fp string
 	var music *xiami.Music
 	music, name, err = download(id)
@@ -201,6 +213,43 @@ func (wf *FPWorkFlow) SetMusic(id xiami.Id) (err error) {
 	return
 }
 
+func makeStorageFile(id xiami.Id) (file *os.File, err error) {
+	path := strconv.Itoa(int(id))
+	var strs []string
+	for i := 0; i < len(path); i += 3 {
+		var end int
+		if i+3 > len(path) {
+			end = len(path)
+		} else {
+			end = i + 3
+		}
+		strs = append(strs, path[i:end])
+	}
+	strs[len(strs)-1] = strs[len(strs)-1] + ".m"
+	path = strings.Join(strs, "/")
+	dir := strings.Join(strs[:len(strs)-1], "/")
+
+	if dir != "" {
+		if MusicStorageDir == "" {
+			dir = "/tmp/music/" + dir
+		} else {
+			dir = MusicStorageDir + "/" + dir
+		}
+
+		err = os.MkdirAll(dir, os.ModePerm)
+		if err != nil {
+			return
+		}
+	}
+	if MusicStorageDir == "" {
+		path = "/tmp/music/" + path
+	} else {
+		path = MusicStorageDir + "/" + path
+	}
+	file, err = os.Create(path)
+	return
+}
+
 func download(id xiami.Id) (music *xiami.Music, name string, err error) {
 	var res *http.Response
 	music, err = xiami.GetMusic(id)
@@ -214,7 +263,7 @@ func download(id xiami.Id) (music *xiami.Music, name string, err error) {
 	}
 
 	var file *os.File
-	file, err = ioutil.TempFile("", "muzzikfp")
+	file, err = makeStorageFile(id)
 	if err != nil {
 		return
 	}

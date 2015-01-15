@@ -1,35 +1,79 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jessevdk/go-flags"
 	"github.com/windwhinny/muzzik-fingerprint"
 	"os"
+	"runtime/debug"
+	"strconv"
 )
 
 var options struct {
-	Build bool   `short:"b" long:"build" description:"build database"`
-	Host  string `short:"h" long:"host" description:"solr host address"`
+	Build      bool   `short:"b" long:"build" description:"build database"`
+	MusicDir   string `short:"d" long:"dir" description:"music storage directory"`
+	Host       string `short:"h" long:"host" description:"solr host address"`
+	Routine    int    `short:"r" long:"routines" description:"routines to run"`
+	SaveToSolr bool   `short:"s" long:"saveToSolr" description:"save to solr searchengine"`
 }
 
-func main() {
-	args, err := flags.ParseArgs(&options, os.Args)
-
+func handleErr(err error) {
 	if err != nil {
 		fmt.Println(err.Error())
+		debug.PrintStack()
 		os.Exit(1)
 	}
+}
+func main() {
+	args, err := flags.ParseArgs(&options, os.Args)
+	handleErr(err)
+	args = args[1:]
 	if options.Host != "" {
 		muzzikfp.SolrHost = options.Host
 	}
 
+	if options.MusicDir != "" {
+		var stat os.FileInfo
+		dir, err := os.Open(options.MusicDir)
+		handleErr(err)
+		stat, err = dir.Stat()
+		handleErr(err)
+		if !stat.IsDir() {
+			err = errors.New(fmt.Sprintf("%s is not directory", dir.Name()))
+			handleErr(err)
+		}
+
+		muzzikfp.MusicStorageDir = options.MusicDir
+	}
+
 	if options.Build {
 		set := &muzzikfp.FPWorkerSet{}
-		set.MaxRoutine = 20
-		set.MaxId = 1000000
+		if options.Routine == 0 {
+			set.MaxRoutine = 20
+		} else {
+			set.MaxRoutine = options.Routine
+		}
+		var start, end int64
+		if len(args) == 2 {
+			start, err = strconv.ParseInt(args[0], 10, 0)
+			handleErr(err)
+			end, err = strconv.ParseInt(args[1], 10, 0)
+			handleErr(err)
+		} else if len(args) == 1 {
+			start, err = strconv.ParseInt(args[0], 10, 0)
+			handleErr(err)
+			end = 100000
+		} else {
+			start = 0
+			end = 100000
+		}
+
+		set.SaveToSolr = options.SaveToSolr
+		set.EndId = int(end)
+		set.StartId = int(start)
 		set.Start()
 	} else {
-		args = args[1:]
 		if len(args) == 0 {
 			fmt.Println("missing filename")
 			os.Exit(1)

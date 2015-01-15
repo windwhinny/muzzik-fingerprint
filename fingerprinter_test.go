@@ -17,7 +17,7 @@ var _ = Describe("FingerPrint", func() {
 			scanner = &Scanner{}
 			wf = &FPWorkFlow{}
 
-			err = wf.SetMusic(300)
+			err = wf.GetMusic(300)
 			Expect(err).To(BeNil())
 			err = wf.Save()
 			Expect(err).To(BeNil())
