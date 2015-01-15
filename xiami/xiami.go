@@ -51,10 +51,10 @@ func GetMusic(id Id) (music *Music, err error) {
 
 	link := fmt.Sprintf(PathTmp, id)
 	res, err = httpClient.Get(link)
-	defer res.Body.Close()
 	if err != nil {
 		return
 	}
+	defer res.Body.Close()
 	var buf []byte
 	xiamiRes := &XiamiResponse{}
 	buf, err = ioutil.ReadAll(res.Body)
