@@ -49,6 +49,7 @@ func (set *FPWorkerSet) Start() {
 	set.Done = make(chan bool)
 	set.mutex = &sync.Mutex{}
 	set.number = uint64(set.StartId)
+	set.CatchError()
 	for i := 0; i < set.MaxRoutine; i++ {
 		wf := &FPWorkFlow{}
 		wf.SaveToSolr = set.SaveToSolr
@@ -68,9 +69,9 @@ func (set *FPWorkerSet) Start() {
 		}()
 
 		set.workers = append(set.workers, wf)
+		time.Sleep(500 * time.Millisecond)
 	}
 
-	set.CatchError()
 	set.Wait()
 }
 
