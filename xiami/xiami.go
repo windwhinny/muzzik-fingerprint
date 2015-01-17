@@ -46,6 +46,7 @@ type XiamiTrack struct {
 	urlDecoded bool
 }
 
+// GetMusic 通过传入的虾米歌曲 Id 返回对应的 Music 实例
 func GetMusic(id Id) (music *Music, err error) {
 	var res *http.Response
 
@@ -82,6 +83,24 @@ func GetMusic(id Id) (music *Music, err error) {
 	return
 }
 
+// DecodeUrl 用来解密虾米返回的 mp3 地址。
+// 其地址加密方式类似凯撒矩阵，如下:
+//
+// <code>6hAFlm%%7422758.Fk459d58642Ent%mei22562F%74maedE98E5%2%-ut25..FF22615_2puy5e%b24515%lpF.xc71%%97E413t%3d5bcbE5E5l%%fio52256782_%h3f5Eb9d-3%E32iam25FE%139l3_D%4f%6d195-</code>
+//
+// 转换后
+//
+// <code>
+// 6
+// hAFlm%%7422758.Fk459d58642En
+// t%mei22562F%74maedE98E5%2%-u
+// t25..FF22615_2puy5e%b24515%l
+// pF.xc71%%97E413t%3d5bcbE5E5l
+// %%fio52256782_%h3f5Eb9d-3%E
+// 32iam25FE%139l3_D%4f%6d195-
+// <code>
+// 其第一位为行数
+//
 func (track *XiamiTrack) DecodeUrl() (err error) {
 	if track.urlDecoded {
 		return
@@ -139,6 +158,7 @@ func (track *XiamiTrack) DecodeUrl() (err error) {
 	return
 }
 
+// ConvertMusic 将虾米的歌曲结构转换为我们自己的结构
 func (track *XiamiTrack) ConvertMusic() (music *Music, err error) {
 	music = &Music{}
 	music.Title = html.UnescapeString(track.Title)
