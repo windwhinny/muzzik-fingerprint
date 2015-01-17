@@ -36,6 +36,7 @@ func Get(link string) (res *http.Response, err error) {
 	}
 
 	if res.StatusCode == 403 {
+		// 虾米有时会返回 403 ，并在body中写入js脚本来设置 cookis
 		var buf []byte
 		buf, err = ioutil.ReadAll(res.Body)
 		if err != nil {
@@ -72,6 +73,7 @@ func Get(link string) (res *http.Response, err error) {
 	return
 }
 
+// getCookieFromJS 从 js 代码中提取 cookie。 例如 `document.cookie="123456"`
 func getCookieFromJS(js []byte) (cookie *http.Cookie, err error) {
 	cookieStr := cookiesReg.Find(js)
 	if len(cookieStr) == 0 {

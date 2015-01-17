@@ -22,6 +22,7 @@ type solrResponse struct {
 	} `json:"response"`
 }
 
+// querySolr 通过转入的歌曲指纹字符串来查询对应的歌曲
 func querySolr(fp string) (music *xiami.Music, err error) {
 	var query = url.Values{
 		"q":    {fp},
@@ -55,6 +56,7 @@ func querySolr(fp string) (music *xiami.Music, err error) {
 	return
 }
 
+// Match 用来查询 scanner.Filename 歌曲文件的 Meta 信息
 func (scanner *Scanner) Match() (err error) {
 	var fp string
 	var music *xiami.Music
