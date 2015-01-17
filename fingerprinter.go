@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/windwhinny/muzzik-fingerprint/xiami"
+	"github.com/Muzzik-Dev-Group/muzzik-fingerprint/xiami"
 	"io"
 	"net/http"
 	"net/url"

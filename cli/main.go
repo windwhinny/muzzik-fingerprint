@@ -3,8 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/Muzzik-Dev-Group/muzzik-fingerprint"
 	"github.com/jessevdk/go-flags"
-	"github.com/windwhinny/muzzik-fingerprint"
 	"os"
 	"runtime/debug"
 	"strconv"

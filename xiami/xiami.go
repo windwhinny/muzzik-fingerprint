@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/windwhinny/muzzik-fingerprint/http-client"
+	"github.com/Muzzik-Dev-Group/muzzik-fingerprint/http-client"
 	"html"
 	"io/ioutil"
 	"math"

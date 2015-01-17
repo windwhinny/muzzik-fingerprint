@@ -1,9 +1,9 @@
 package muzzikfp
 
 import (
+	"github.com/Muzzik-Dev-Group/muzzik-fingerprint/xiami"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/windwhinny/muzzik-fingerprint/xiami"
 	"os"
 )
 
