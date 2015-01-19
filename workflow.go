@@ -2,8 +2,6 @@ package muzzikfp
 
 import (
 	"bytes"
-	"compress/zlib"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,7 +11,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -213,7 +210,8 @@ func (wf *FPWorkFlow) GetMusic(id xiami.Id) (err error) {
 		return err
 	}
 	wf.Filename = name
-	fp, err = getFingerPrint(name)
+	file := &AudioFile{Path: name}
+	fp, err = file.getFingerPrint(false)
 	if err != nil {
 		return err
 	}
@@ -292,96 +290,5 @@ func download(id xiami.Id) (music *xiami.Music, name string, err error) {
 
 	name = file.Name()
 
-	return
-}
-
-// getRangeFingerPrint 获取歌曲音频指纹。star 和 end 分别代表需要截取指纹的区域，如果都为 -1 则代表全部歌曲。
-func getRangeFingerPrint(file string, star int, end int) (fp string, err error) {
-	var cmd *exec.Cmd
-	if star < 0 || end < 0 {
-		cmd = exec.Command("echoprint-codegen", file)
-	} else {
-		cmd = exec.Command("echoprint-codegen", file, strconv.Itoa(star), strconv.Itoa(end))
-	}
-	var buf bytes.Buffer
-	cmd.Stdout = &buf
-
-	err = cmd.Run()
-	if err != nil {
-		return
-	}
-	var m []*struct {
-		Code string `json:"code"`
-	}
-
-	err = json.Unmarshal(buf.Bytes(), &m)
-	if err != nil {
-		return
-	}
-
-	if len(m) == 0 {
-		err = errors.New(fmt.Sprintf("cant get fingerprint of file %s", file))
-	}
-
-	fp = m[0].Code
-	fp, err = uncompressFP(fp)
-	if err != nil {
-		return
-	}
-	return
-}
-
-func getFingerPrint(file string) (fp string, err error) {
-	return getRangeFingerPrint(file, -1, -1)
-}
-
-// uncompressFP 将压缩过的指纹转换为原始指纹
-func uncompressFP(fp string) (_fp string, err error) {
-	var c []byte
-	fp = strings.Replace(fp, "-", "+", -1)
-	fp = strings.Replace(fp, "_", "/", -1)
-	c, err = base64.StdEncoding.DecodeString(fp)
-	if err != nil {
-		return
-	}
-
-	byt := bytes.NewReader(c)
-	var r io.ReadCloser
-	r, err = zlib.NewReader(byt)
-	if err != nil {
-		return
-	}
-
-	defer r.Close()
-	c, err = ioutil.ReadAll(r)
-
-	if err != nil {
-		return
-	}
-
-	if len(c)%10 != 0 {
-		err = errors.New("length doesn't match")
-		return
-	}
-
-	half := len(c) / 2
-	var _a, _b int64
-	var a, b []byte
-	var result []string
-	for i := 0; i < half; i += 5 {
-		a = c[i : i+5]
-		b = c[half+i : half+i+5]
-
-		_a, err = strconv.ParseInt(string(a), 16, 0)
-		if err != nil {
-			return
-		}
-		_b, err = strconv.ParseInt(string(b), 16, 0)
-		if err != nil {
-			return
-		}
-		result = append(result, strconv.Itoa(int(_b)), strconv.Itoa(int(_a)))
-	}
-	_fp = strings.Join(result, " ")
 	return
 }

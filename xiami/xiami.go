@@ -19,12 +19,12 @@ var PathTmp = `http://www.xiami.com/song/playlist/id/%d/cat/json`
 type Id int
 
 type Music struct {
+	Id          string `json:"id,omitempty"`
 	Title       string `json:"title,omitempty"`
 	Album       string `json:"album,omitempty"`
 	Artist      string `json:"artist,omitempty"`
 	Cover       string `json:"cover,omitempty"`
 	XiamiId     Id     `json:"xiamiId,omitempty"`
-	Id          string `json:"id,omitempty"`
 	FingerPrint string `json:"fp,omitempty"`
 	Url         string `json:"-"`
 }
