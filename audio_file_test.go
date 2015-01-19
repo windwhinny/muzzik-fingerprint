@@ -63,11 +63,11 @@ var _ = Describe("AudioFile", func() {
 			file.Duration = 60
 		})
 
-		It("should return 3 part of fp", func() {
+		It("should return part of fp", func() {
 			fps, err := GetFPs(file)
 			Expect(err).To(BeNil())
-			Expect(len(fps)).To(Equal(3))
-			r := []int{0, 10, 25, 35, 50, 60}
+			Expect(len(fps)).To(Equal(1))
+			r := []int{0, 60}
 
 			for k, v := range file.Range {
 				Expect(v).To(Equal(r[k]))

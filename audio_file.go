@@ -37,44 +37,22 @@ type AudioFileParser interface {
 
 // GetFPs 取出文件前中后三段各10秒的音频指纹, 如果时长小于10秒则只取一段，小于30秒则取两段
 func GetFPs(file AudioFileParser) (fps []string, err error) {
-	var duration int
-	duration, err = file.getDuration()
+
 
 	if err != nil {
 		return
 	}
 	var fp string
-	var leftR, middleR, rightR []int
+	var leftR []int
 	leftR = append(leftR, 0)
-	if duration <= 10 {
-		leftR = append(leftR, duration)
-	} else {
-		leftR = append(leftR, 10)
-	}
 
+	leftR = append(leftR, 60)
 	fp, err = file.getRangeFingerPrint(leftR[0], leftR[1], true)
 	if err != nil {
 		return
 	}
 	fps = append(fps, fp)
 
-	if duration >= 30 {
-		middleR = append(middleR, (duration/2)-5, 10)
-		fp, err = file.getRangeFingerPrint(middleR[0], middleR[1], true)
-		if err != nil {
-			return
-		}
-		fps = append(fps, fp)
-	}
-
-	if duration > 10 {
-		rightR = append(rightR, duration-10, 10)
-		fp, err = file.getRangeFingerPrint(rightR[0], rightR[1], true)
-		if err != nil {
-			return
-		}
-		fps = append(fps, fp)
-	}
 	return
 }
 

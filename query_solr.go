@@ -53,9 +53,9 @@ func QuerySolr(fp string) (musics Musics, err error) {
 	}
 	var link string
 	if SolrHost == "" {
-		link = `http://localhost:8080/solr/fp/select?fl=*%2Cscore`
+		link = `http://localhost:8080/solr/fp/hashq?fl=*%2Cscore`
 	} else {
-		link = fmt.Sprintf("http://%s/solr/fp/select?fl=*%2Cscore", SolrHost)
+		link = fmt.Sprintf("http://%s/solr/fp/hashq?fl=*%2Cscore", SolrHost)
 	}
 	res, err := http.PostForm(link, query)
 	if err != nil {
